@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { boxGeo, cylGeo, planeGeo, ensureUv2 } from "./assets.js";
-import { makeLabel } from "./monk.js";
+import { makeLabel, makePlaqueMesh } from "./monk.js";
+import { makeSeatedBuddha, makeAttendant, makeArhat, makeCofferedCeiling, makeBanner, makeOfferingTable, makeFishAndQing } from "./temple-props.js";
 
 function seedRng(seed = 20261111) {
   let _s = seed >>> 0;
@@ -143,11 +144,10 @@ export function buildWorld(scene, mats, q) {
   mesh(boxGeo(8.2, 0.28, 0.42, 0.8), mats.woodDark, 0, 4.5, 0, gate);
   mesh(boxGeo(8.2, 0.2, 0.32, 0.8), mats.wood, 0, 3.7, 0, gate);
   hipRoof(gate, 8.6, 2.8, 4.7, 1.7);
-  mesh(boxGeo(2.7, 0.72, 0.08, 1), mats.plaque, 0, 4.05, 0.32, gate);
-  const pLabel = makeLabel("云端禅院", "#f0e0a8");
-  pLabel.scale.set(3.2, 0.8, 1);
-  pLabel.position.set(0, 4.05, 0.4);
-  gate.add(pLabel);
+  mesh(boxGeo(3.35, 1.02, 0.08, 1), mats.plaque, 0, 4.05, 0.28, gate);
+  const gatePlaque = makePlaqueMesh("云端禅院", 3.2, 0.92, { bg: "#143324", fg: "#f3d78a", border: "#d4b056" });
+  gatePlaque.position.set(0, 4.05, 0.34);
+  gate.add(gatePlaque);
   for (const x of [-2.3, -0.8, 0.8, 2.3]) addPaperLantern(gate, x, 3.35, 0.65, true);
   areas.push({ name: "山门", x: 0, z: 10, r: 6 });
   areas.push({ name: "入口", x: 0, z: 22, r: 8 });
@@ -160,7 +160,7 @@ export function buildWorld(scene, mats, q) {
   mesh(boxGeo(20.4, 0.18, 14.4, 0.5), mats.stone, 0, 0.98, 0, hall);
   mesh(boxGeo(4.8, 0.45, 3.2, 0.7), mats.stone, 0, 0.22, 8.3, hall);
   mesh(boxGeo(3.6, 0.32, 2.0, 0.7), mats.stone, 0, 0.16, 10.2, hall);
-  mesh(boxGeo(18.6, 0.08, 12.4, 0.7), mats.plank, 0, 1.0, 0, hall, { cast: false });
+  mesh(boxGeo(17.6, 0.08, 12.0, 0.7), mats.plank, 0, 1.14, 0, hall, { cast: false });
 
   const pillarPos = [];
   for (const x of [-8, -4, 0, 4, 8]) {
@@ -170,11 +170,36 @@ export function buildWorld(scene, mats, q) {
     }
   }
   for (const x of [-8, 8]) pillarPos.push([x, 0]);
-  for (const [x, z] of pillarPos) pillar(hall, x, 3.65, z, 5.1, 0.3);
+  for (const [x, z] of pillarPos) {
+    pillar(hall, x, 3.65, z, 5.1, 0.3);
+    addCol(x, -28 + z, 0.45);
+  }
 
-  mesh(boxGeo(18.4, 4.6, 0.22, 0.25), mats.cream, 0, 3.3, -6.0, hall);
-  mesh(boxGeo(0.22, 4.6, 11.6, 0.25), mats.cream, -8.85, 3.3, 0, hall);
-  mesh(boxGeo(0.22, 4.6, 11.6, 0.25), mats.cream, 8.85, 3.3, 0, hall);
+  // walls sit on the platform (y 1.0 .. 5.6)
+  mesh(boxGeo(18.4, 4.6, 0.28, 0.25), mats.cream, 0, 3.3, -6.15, hall);
+  mesh(boxGeo(0.28, 4.6, 12.3, 0.25), mats.cream, -8.9, 3.3, 0, hall);
+  mesh(boxGeo(0.28, 4.6, 12.3, 0.25), mats.cream, 8.9, 3.3, 0, hall);
+  // front wall with a central doorway
+  mesh(boxGeo(6.15, 4.6, 0.28, 0.25), mats.cream, -5.65, 3.3, 6.15, hall);
+  mesh(boxGeo(6.15, 4.6, 0.28, 0.25), mats.cream, 5.65, 3.3, 6.15, hall);
+  mesh(boxGeo(5.4, 1.15, 0.32, 0.4), mats.woodDark, 0, 5.15, 6.15, hall);
+  mesh(boxGeo(5.4, 0.16, 0.5, 0.6), mats.woodDark, 0, 1.08, 6.35, hall);
+  mesh(boxGeo(0.22, 4.2, 0.22, 0.6), mats.woodDark, -2.6, 3.15, 6.22, hall);
+  mesh(boxGeo(0.22, 4.2, 0.22, 0.6), mats.woodDark, 2.6, 3.15, 6.22, hall);
+  // door leaves hinged at the posts, swung open inward
+  for (const s of [-1, 1]) {
+    const hinge = new THREE.Group();
+    hinge.position.set(s * 2.58, 3.05, 6.15);
+    hinge.rotation.y = -s * 1.05;
+    hall.add(hinge);
+    mesh(boxGeo(2.4, 3.9, 0.08, 0.5), mats.lacquer, s * -1.2, 0, 0, hinge);
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 2; c++) {
+        mesh(new THREE.SphereGeometry(0.045, 6, 4), mats.gold, s * -0.55 - s * c * 0.7, -0.7 + r * 0.9, 0.06, hinge, { cast: false });
+      }
+    }
+  }
+
   for (const side of [-1, 1]) {
     for (let i = 0; i < 4; i++) {
       const z = -3.6 + i * 2.2;
@@ -185,39 +210,90 @@ export function buildWorld(scene, mats, q) {
     }
   }
   hipRoof(hall, 20.6, 14.6, 6.1, 3.3);
-  mesh(boxGeo(3.5, 0.88, 0.1, 1), mats.plaque, 0, 6.45, 7.55, hall);
-  const hLab = makeLabel("大雄宝殿", "#f0e0a8");
-  hLab.scale.set(3.6, 0.9, 1);
-  hLab.position.set(0, 6.45, 7.68);
-  hall.add(hLab);
-  for (const x of [-6, -2, 2, 6]) addPaperLantern(hall, x, 5.55, 6.35, true);
 
-  // Buddha pedestal + anchor (model loaded later)
-  const buddha = new THREE.Group();
-  buddha.position.set(0, 1.15, -4.15);
-  hall.add(buddha);
-  mesh(cylGeo(1.35, 1.55, 0.22, 24, 3, 0.4), mats.gold, 0, 0.14, 0, buddha);
-  mesh(cylGeo(1.05, 1.25, 0.16, 24, 3, 0.4), mats.gold, 0, 0.3, 0, buddha);
-  const petalGeo = new THREE.SphereGeometry(0.42, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const p = mesh(petalGeo, mats.gold, Math.cos(a) * 0.85, 0.32, Math.sin(a) * 0.85, buddha, { cast: false });
-    p.scale.set(1.1, 0.45, 0.7);
-    p.rotation.y = -a;
-    p.rotation.x = 0.4;
+  // 匾额 hangs on the facade above the doors, fully under the eave
+  mesh(boxGeo(4.35, 1.18, 0.1, 1), mats.plaque, 0, 5.52, 6.38, hall);
+  const hallPlaque = makePlaqueMesh("大雄宝殿", 4.2, 1.08, { bg: "#143324", fg: "#f3d78a", border: "#e0c068" });
+  hallPlaque.position.set(0, 5.52, 6.46);
+  hall.add(hallPlaque);
+  for (const x of [-6, -2, 2, 6]) addPaperLantern(hall, x, 5.55, 6.55, true);
+
+  hall.add(makeCofferedCeiling(17.6, 11.8, mats, 5.62));
+  for (const x of [-6.2, -3.1, 3.1, 6.2]) {
+    const b = makeBanner(mats, 2.2);
+    b.position.set(x, 5.45, 2.2);
+    hall.add(b);
   }
-  const buddhaAnchor = new THREE.Group();
-  buddhaAnchor.position.set(0, 0.42, 0);
-  buddha.add(buddhaAnchor);
-  decorations.buddhaAnchor = buddhaAnchor;
-  decorations.buddhaGroup = buddha;
+  for (const x of [-5, 5]) {
+    const b = makeBanner(mats, 2.0);
+    b.position.set(x, 5.45, -1.2);
+    hall.add(b);
+  }
+  for (const [x, z] of [[-3.5, 2], [3.5, 2], [-3.5, -1], [3.5, -1], [0, 3.2]]) {
+    addPaperLantern(hall, x, 5.15, z, true);
+  }
 
-  const halo = mesh(new THREE.TorusGeometry(0.95, 0.045, 8, 28), mats.gold, 0, 2.05, -0.25, buddha, { cast: false });
-  halo.rotation.x = -0.1;
-  mesh(new THREE.PlaneGeometry(6.4, 5.2), mats.halo, 0, 3.5, -5.85, hall, { cast: false });
+  // 佛台 + 横三世佛 (药师 east/+X, 释迦 center, 阿弥陀 west/-X), facing the courtyard
+  const altar = new THREE.Group();
+  altar.position.set(0, 1.0, -4.55);
+  hall.add(altar);
+  mesh(boxGeo(15.2, 0.85, 3.4, 0.4), mats.stoneFine, 0, 0.42, 0, altar);
+  mesh(boxGeo(14.8, 0.08, 3.15, 0.5), mats.woodDark, 0, 0.86, 0, altar);
+  mesh(boxGeo(14.6, 0.55, 0.08, 0.6), mats.lacquer, 0, 0.4, 1.72, altar);
+  for (const x of [-6, -3, 0, 3, 6]) {
+    mesh(new THREE.SphereGeometry(0.08, 8, 6), mats.gold, x, 0.4, 1.78, altar, { cast: false });
+  }
+  const buddhaSeg = q.fluent ? 8 : 12;
+  const amitabha = makeSeatedBuddha(mats, { scale: 1.15, seg: buddhaSeg, shadows });
+  amitabha.position.set(-4.6, 0.86, 0.1);
+  altar.add(amitabha);
+  const shakyamuni = makeSeatedBuddha(mats, { scale: 1.45, seg: buddhaSeg, shadows });
+  shakyamuni.position.set(0, 0.86, 0.05);
+  altar.add(shakyamuni);
+  const bhaisajya = makeSeatedBuddha(mats, { scale: 1.15, seg: buddhaSeg, shadows });
+  bhaisajya.position.set(4.6, 0.86, 0.1);
+  altar.add(bhaisajya);
+  const kasyapa = makeAttendant(mats, { scale: 0.72, shadows, older: true });
+  kasyapa.position.set(-1.55, 0.86, 0.85);
+  altar.add(kasyapa);
+  const ananda = makeAttendant(mats, { scale: 0.72, shadows });
+  ananda.position.set(1.55, 0.86, 0.85);
+  altar.add(ananda);
+  for (const x of [-4.6, 0, 4.6]) {
+    const halo = mesh(new THREE.TorusGeometry(x === 0 ? 0.95 : 0.75, 0.04, 8, 24), mats.gold, x, 2.55, -0.55, altar, { cast: false });
+    halo.rotation.x = -0.08;
+  }
+  mesh(new THREE.PlaneGeometry(14.5, 4.4), mats.halo, 0, 3.35, -6.0, hall, { cast: false });
+  decorations.buddhaAnchor = shakyamuni;
+  decorations.buddhaGroup = altar;
 
-  hall.userData.aabb = { minX: -10, maxX: 10, minZ: -35, maxZ: -22 };
-  interactables.push({ id: "buddha", type: "bow", x: 0, z: -22, r: 4, label: "向佛礼拜" });
+  const offering = makeOfferingTable(mats, shadows);
+  offering.position.set(0, 1.0, -2.15);
+  hall.add(offering);
+  addCol(0, -30.15, 1.7);
+
+  const ritual = makeFishAndQing(mats);
+  ritual.position.set(4.2, 1.0, -1.6);
+  hall.add(ritual);
+  addCol(4.2, -29.6, 0.8);
+
+  // low benches along both side walls for the 十八罗汉
+  mesh(boxGeo(0.7, 0.32, 10.2, 0.5), mats.woodDark, -7.2, 1.28, 0.6, hall);
+  mesh(boxGeo(0.7, 0.32, 10.2, 0.5), mats.woodDark, 7.2, 1.28, 0.6, hall);
+  for (let i = 0; i < 9; i++) {
+    const z = -3.5 + i * 1.15;
+    const aL = makeArhat(mats, { scale: 1.05, shadows, tilt: 0.15 + (i % 3) * 0.08, side: 1 });
+    aL.position.set(-7.15, 1.44, z);
+    aL.rotation.y = Math.PI / 2;
+    hall.add(aL);
+    const aR = makeArhat(mats, { scale: 1.05, shadows, tilt: -0.12 - (i % 3) * 0.06, side: -1 });
+    aR.position.set(7.15, 1.44, z);
+    aR.rotation.y = -Math.PI / 2;
+    hall.add(aR);
+  }
+
+  hall.userData.aabb = { minX: -10.4, maxX: 10.4, minZ: -36, maxZ: -17.2 };
+  interactables.push({ id: "buddha", type: "bow", x: 0, z: -27.2, r: 3.6, label: "向佛礼拜" });
   areas.push({ name: "大雄宝殿", x: 0, z: -28, r: 12 });
 
   function makeCushion() {
@@ -231,21 +307,40 @@ export function buildWorld(scene, mats, q) {
     g.add(top, rim);
     return g;
   }
-  for (let row = 0; row < 2; row++) {
-    for (let col = -2; col <= 2; col++) {
-      const x = col * 1.5;
-      const z = -19.2 - row * 1.5;
+  // 拜垫 inside the hall, aisle down the center
+  for (let row = 0; row < 3; row++) {
+    for (const col of [-2.15, -1.05, 1.05, 2.15]) {
+      const x = col;
+      const z = -26.6 + row * 1.35;
       const c = makeCushion();
-      c.position.set(x, 0.06, z);
+      c.position.set(x, 1.16, z);
       root.add(c);
-      cushions.push({ x, z, y: 0.06, occ: false });
+      cushions.push({ x, z, y: 1.16, occ: false });
     }
   }
-  for (const [x, z] of [[-6, 4], [6, 4], [-7, -6], [7, -8]]) {
+  for (const [x, z] of [[-6, 4], [6, 4], [-7, -6], [7, -8], [-5, -14], [5, -14]]) {
     const c = makeCushion();
     c.position.set(x, 0.06, z);
     root.add(c);
     cushions.push({ x, z, y: 0.06, occ: false });
+  }
+
+  const wallBoxes = [
+    { minX: -9.2, maxX: -2.55, minZ: -22.05, maxZ: -21.55 },
+    { minX: 2.55, maxX: 9.2, minZ: -22.05, maxZ: -21.55 },
+    { minX: -9.2, maxX: 9.2, minZ: -34.45, maxZ: -33.85 },
+    { minX: -9.2, maxX: -8.55, minZ: -34.45, maxZ: -21.55 },
+    { minX: 8.55, maxX: 9.2, minZ: -34.45, maxZ: -21.55 },
+    { minX: -7.4, maxX: 7.4, minZ: -34.2, maxZ: -30.55 },
+  ];
+  function groundHeight(x, z) {
+    if (Math.abs(x) < 8.7 && z <= -21.7 && z >= -33.7) return 1.14;
+    if (Math.abs(x) < 10.2 && z <= -20.5 && z >= -35.5) return 1.0;
+    if (Math.abs(x) < 3.6 && z < -17.55 && z > -20.5) {
+      if (z > -19.15) return 0.32;
+      return 0.70;
+    }
+    return 0;
   }
 
   // ===== 香炉 =====
@@ -356,41 +451,48 @@ export function buildWorld(scene, mats, q) {
   interactables.push({ id: "bell", type: "bell", x: 20, z: -22, r: 3, label: "撞钟" });
   areas.push({ name: "钟楼", x: 20, z: -22, r: 7 });
 
-  // Trees
+  // Trees — clustered-sphere crowns (v2 silhouette) with PBR bark and autumn/pine materials
+  const crownR = new THREE.MeshStandardMaterial({ color: 0xb44224, roughness: 0.86, metalness: 0, envMapIntensity: 0.5 });
+  const crownO = new THREE.MeshStandardMaterial({ color: 0xcc5e28, roughness: 0.86, metalness: 0, envMapIntensity: 0.5 });
+  const crownY = new THREE.MeshStandardMaterial({ color: 0xd47830, roughness: 0.86, metalness: 0, envMapIntensity: 0.5 });
+  const crownRd = new THREE.MeshStandardMaterial({ color: 0x8f3018, roughness: 0.88, metalness: 0, envMapIntensity: 0.5 });
+  const crownOd = new THREE.MeshStandardMaterial({ color: 0xb04e20, roughness: 0.88, metalness: 0, envMapIntensity: 0.5 });
+  const crownG = new THREE.MeshStandardMaterial({ color: 0x3d6a38, roughness: 0.88, metalness: 0, envMapIntensity: 0.45 });
+  const pineMat = new THREE.MeshStandardMaterial({ color: 0x2f4a32, roughness: 0.9, metalness: 0, envMapIntensity: 0.4 });
+  const crownLookup = new Map([[mats.leafR, crownR], [mats.leafO, crownO], [mats.leafY, crownY], [mats.leafG, crownG]]);
+
   function addMaple(x, z, h, leafMat) {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
-    const trunk = mesh(cylGeo(0.1 + h * 0.03, 0.16 + h * 0.04, h, 9, 1, 2.4), mats.bark, 0, h / 2, 0, g);
-    // branches
-    const nBr = 3 + Math.floor(rng() * 3);
+    const col = crownLookup.get(leafMat) || crownO;
+    const trunk = mesh(cylGeo(0.12 + h * 0.018, 0.2 + h * 0.03, h * 0.92, 8, 1, 2.2), mats.bark, 0, h * 0.46, 0, g);
+    trunk.rotation.z = (rng() - 0.5) * 0.08;
+    const nBr = 3 + Math.floor(rng() * 2);
     for (let i = 0; i < nBr; i++) {
       const a = rng() * Math.PI * 2;
-      const by = h * (0.45 + rng() * 0.4);
-      const bl = 0.6 + rng() * 0.9;
-      const br = mesh(cylGeo(0.035, 0.06, bl, 6, 1, 1), mats.bark, Math.cos(a) * 0.2, by, Math.sin(a) * 0.2, g, { cast: false });
-      br.rotation.z = Math.cos(a) * 0.8;
-      br.rotation.x = Math.sin(a) * 0.8;
+      const by = h * (0.45 + rng() * 0.28);
+      const bl = 0.7 + rng() * 0.9;
+      const br = mesh(cylGeo(0.04, 0.07, bl, 6, 1, 1), mats.bark, Math.cos(a) * 0.15, by, Math.sin(a) * 0.15, g, { cast: false });
+      br.rotation.z = Math.cos(a) * 0.85;
+      br.rotation.x = Math.sin(a) * 0.85;
     }
-    const count = Math.floor((14 + h * 3) * q.leafScale);
-    const card = new THREE.PlaneGeometry(1.15, 1.15);
-    const inst = new THREE.InstancedMesh(card, leafMat, count);
-    inst.castShadow = false;
-    inst.receiveShadow = false;
-    inst.frustumCulled = false;
-    const dummy = new THREE.Object3D();
-    for (let i = 0; i < count; i++) {
-      const a = rng() * Math.PI * 2;
-      const r = rng() * (1.1 + h * 0.25);
-      dummy.position.set(Math.cos(a) * r, h * 0.62 + rng() * h * 0.45, Math.sin(a) * r);
-      dummy.rotation.set(rng() * 0.8, rng() * Math.PI * 2, rng() * 0.8);
-      const sc = 0.7 + rng() * 0.6;
-      dummy.scale.set(sc, sc, sc);
-      dummy.updateMatrix();
-      inst.setMatrixAt(i, dummy.matrix);
+    const shades = [col];
+    if (col === crownR) shades.push(crownRd, crownO);
+    else if (col === crownO) shades.push(crownOd, crownY);
+    else if (col === crownY) shades.push(crownO, crownOd);
+    else shades.push(col);
+    const nBall = q.fluent ? 8 : 11;
+    for (let i = 0; i < nBall; i++) {
+      const a = (i / nBall) * Math.PI * 2 + rng() * 0.35;
+      const r = (i < 6 ? 0.15 : 0.28) + rng() * (0.22 + h * 0.04);
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.7 + rng() * 0.35, 12, 10), shades[i % shades.length]);
+      s.position.set(Math.cos(a) * r, h * 0.84 + rng() * 0.35, Math.sin(a) * r);
+      s.scale.set(1.1 + rng() * 0.2, 0.85 + rng() * 0.15, 1.1 + rng() * 0.2);
+      s.castShadow = false;
+      s.receiveShadow = shadows;
+      g.add(s);
     }
-    inst.instanceMatrix.needsUpdate = true;
-    g.add(inst);
-    decorations.windy.push({ group: g, inst, base: inst.rotation.y, amp: 0.04 + rng() * 0.03, spd: 0.4 + rng() * 0.4 });
+    decorations.windy.push({ group: g, inst: null, base: 0, amp: 0.018 + rng() * 0.015, spd: 0.35 + rng() * 0.25 });
     root.add(g);
     return g;
   }
@@ -398,32 +500,20 @@ export function buildWorld(scene, mats, q) {
   function addPine(x, z, h) {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
-    mesh(cylGeo(0.1, 0.18, h, 8, 1, 2.5), mats.bark, 0, h / 2, 0, g);
-    const layers = 5 + Math.floor(h);
-    const card = new THREE.PlaneGeometry(1.6, 1.3);
-    const n = Math.floor(layers * 6 * q.leafScale);
-    const inst = new THREE.InstancedMesh(card, mats.pine, n);
-    inst.castShadow = false;
-    inst.frustumCulled = false;
-    const dummy = new THREE.Object3D();
-    let k = 0;
-    for (let i = 0; i < layers && k < n; i++) {
-      const yy = h * 0.28 + (i / layers) * h * 0.75;
-      const rad = (1.0 - i / layers) * (1.4 + h * 0.15) + 0.4;
-      const around = 5 + (i % 2);
-      for (let j = 0; j < around && k < n; j++, k++) {
-        const a = (j / around) * Math.PI * 2 + i;
-        dummy.position.set(Math.cos(a) * rad * 0.45, yy, Math.sin(a) * rad * 0.45);
-        dummy.rotation.set(0.5, a, 0);
-        dummy.scale.set(rad * 0.7, rad * 0.55, 1);
-        dummy.updateMatrix();
-        inst.setMatrixAt(k, dummy.matrix);
-      }
+    mesh(cylGeo(0.1, 0.2, h, 8, 1, 2.4), mats.bark, 0, h / 2, 0, g);
+    const layers = 5 + (h > 4 ? 1 : 0);
+    for (let i = 0; i < layers; i++) {
+      const t = i / (layers - 1);
+      const rad = (1.35 + h * 0.14) * (1 - t * 0.72) + 0.28;
+      const ch = 0.85 + h * 0.1;
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(rad, ch, 10), pineMat);
+      cone.position.y = h * 0.28 + i * (h * 0.15);
+      cone.rotation.y = i * 0.45;
+      cone.castShadow = false;
+      cone.receiveShadow = shadows;
+      g.add(cone);
     }
-    inst.count = k;
-    inst.instanceMatrix.needsUpdate = true;
-    g.add(inst);
-    decorations.windy.push({ group: g, inst, base: 0, amp: 0.02, spd: 0.3 });
+    decorations.windy.push({ group: g, inst: null, base: 0, amp: 0.01, spd: 0.25 });
     root.add(g);
     return g;
   }
@@ -436,20 +526,25 @@ export function buildWorld(scene, mats, q) {
       const stalk = mesh(cylGeo(0.045 + rng() * 0.02, 0.06, h, 7, 1, 4), mats.bamboo, x, h / 2, z, root, { cast: false });
       decorations.windy.push({ group: stalk, inst: null, base: 0, amp: 0.03 + rng() * 0.03, spd: 0.6 + rng() * 0.4 });
       for (let k = 1; k < 5; k++) {
-        mesh(new THREE.TorusGeometry(0.07, 0.012, 4, 8), mats.bambooDark, x, k * (h / 5.2), z, root, { cast: false }).rotation.x = Math.PI / 2;
+        const node = mesh(cylGeo(0.07, 0.07, 0.045, 6, 1, 1), mats.bambooDark, x, k * (h / 5.2), z, root, { cast: false });
       }
-      // a few leaf cards
-      if (rng() > 0.35) {
-        const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.25), mats.leafG);
-        leaf.position.set(x + 0.2, h * 0.85, z);
-        leaf.rotation.z = -0.4;
+      const tuft = Math.floor(5 + rng() * 3);
+      for (let k = 0; k < tuft; k++) {
+        const a = (k / tuft) * Math.PI * 2 + rng() * 0.3;
+        const leaf = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.16), crownG);
+        leaf.material = crownG;
+        leaf.material.side = THREE.DoubleSide;
+        leaf.position.set(x + Math.cos(a) * 0.15, h * (0.78 + rng() * 0.18), z + Math.sin(a) * 0.15);
+        leaf.rotation.set(0.15, a, -0.85 + rng() * 0.3);
         root.add(leaf);
       }
     }
   }
 
   // wish tree – featured maple
-  const wish = addMaple(-13, -17, 4.2, mats.leafO);
+  const wish = addMaple(-13, -17, 4.6, mats.leafO);
+  addPine(-17.5, -13.5, 5.2);
+  addMaple(-10.2, -20.5, 3.6, mats.leafR);
   interactables.push({ id: "wish", type: "wish", x: -13, z: -17, r: 3, label: "许愿挂红" });
   areas.push({ name: "许愿树", x: -13, z: -17, r: 6 });
   decorations.wishTree = { x: -13, z: -17, group: decorations.ribbons };
@@ -594,7 +689,7 @@ export function buildWorld(scene, mats, q) {
     }
   };
 
-  return { root, colliders, interactables, cushions, areas, decorations, hallAABB: hall.userData.aabb, addLantern: addPaperLantern };
+  return { root, colliders, interactables, cushions, areas, decorations, hallAABB: hall.userData.aabb, wallBoxes, groundHeight, addLantern: addPaperLantern };
 }
 
 export function placeBuddha(model, anchor) {

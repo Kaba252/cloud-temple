@@ -4,237 +4,189 @@ export function makeLabel(text, color = "#f0e0a8") {
   const c = document.createElement("canvas");
   c.width = 256; c.height = 64;
   const ctx = c.getContext("2d");
-  ctx.clearRect(0, 0, 256, 64);
-  ctx.font = "600 28px 'Noto Sans SC', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(12,10,8,0.45)";
-  const w = Math.min(240, ctx.measureText(text).width + 24);
-  ctx.beginPath();
-  ctx.roundRect(128 - w / 2, 14, w, 36, 18);
-  ctx.fill();
-  ctx.fillStyle = color;
-  ctx.fillText(text, 128, 34);
+  const draw = (t, col = color) => {
+    ctx.clearRect(0, 0, 256, 64);
+    ctx.font = "600 28px 'Noto Sans SC', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(12,10,8,0.45)";
+    const w = Math.min(240, ctx.measureText(t).width + 24);
+    ctx.beginPath();
+    ctx.roundRect(128 - w / 2, 14, w, 36, 18);
+    ctx.fill();
+    ctx.fillStyle = col;
+    ctx.fillText(t, 128, 34);
+  };
+  draw(text, color);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true });
   const spr = new THREE.Sprite(mat);
   spr.scale.set(1.45, 0.36, 1);
-  spr.position.y = 1.85;
-  spr.userData.canvas = c;
-  spr.userData.ctx = ctx;
-  spr.userData.tex = tex;
-  spr.userData.setText = (t, col = color) => {
-    ctx.clearRect(0, 0, 256, 64);
-    ctx.fillStyle = "rgba(12,10,8,0.45)";
-    const ww = Math.min(240, ctx.measureText(t).width + 24);
-    ctx.beginPath();
-    ctx.roundRect(128 - ww / 2, 14, ww, 36, 18);
-    ctx.fill();
-    ctx.fillStyle = col;
-    ctx.fillText(t, 128, 34);
-    tex.needsUpdate = true;
-  };
+  spr.position.y = 2.05;
+  spr.userData.setText = (t, col = color) => { draw(t, col); tex.needsUpdate = true; };
   return spr;
 }
 
-function clothNormal() {
+/** Flush plaque board: characters are evenly spaced and fully inside the board. */
+export function makePlaqueMesh(text, w = 3.6, h = 0.95, opts = {}) {
+  const W = 1024, H = 256;
   const c = document.createElement("canvas");
-  c.width = c.height = 128;
+  c.width = W; c.height = H;
   const ctx = c.getContext("2d");
-  ctx.fillStyle = "#8080ff";
-  ctx.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 18; i++) {
-    const x = (i / 18) * 128;
-    const g = ctx.createLinearGradient(x, 0, x + 8, 0);
-    g.addColorStop(0, "#6a6aff");
-    g.addColorStop(0.5, "#9a9aff");
-    g.addColorStop(1, "#6a6aff");
-    ctx.fillStyle = g;
-    ctx.fillRect(x, 0, 8, 128);
+  const bg = opts.bg || "#163526";
+  const fg = opts.fg || "#f3d78a";
+  const border = opts.border || "#c9a44a";
+
+  function paint() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    // gold frame
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 18;
+    ctx.strokeRect(14, 14, W - 28, H - 28);
+    ctx.lineWidth = 6;
+    ctx.strokeRect(32, 32, W - 64, H - 64);
+    const chars = Array.from(text);
+    const n = Math.max(1, chars.length);
+    const fontPx = Math.floor(Math.min(168, (W - 120) / n * 0.92, H - 80));
+    ctx.font = `700 ${fontPx}px "Noto Serif SC", "Noto Serif CJK SC", "Noto Sans SC", "Noto Sans CJK SC", serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = fg;
+    const inset = 70;
+    const cell = (W - inset * 2) / n;
+    for (let i = 0; i < n; i++) {
+      ctx.fillText(chars[i], inset + cell * (i + 0.5), H / 2 + 4);
+    }
   }
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(2, 3);
-  return t;
-}
-
-const CLOTH_NOR = clothNormal();
-
-function robeMat(color) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.78,
-    metalness: 0.0,
-    envMapIntensity: 0.45,
-    normalMap: CLOTH_NOR,
-    normalScale: new THREE.Vector2(0.12, 0.12),
+  paint();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  const mat = new THREE.MeshStandardMaterial({
+    map: tex, roughness: 0.45, metalness: 0.08,
+    envMapIntensity: 0.45, polygonOffset: true, polygonOffsetFactor: -2,
   });
-}
-
-function latheRobe() {
-  const pts = [
-    new THREE.Vector2(0.22, 0.02),
-    new THREE.Vector2(0.26, 0.08),
-    new THREE.Vector2(0.28, 0.28),
-    new THREE.Vector2(0.26, 0.55),
-    new THREE.Vector2(0.25, 0.78),
-    new THREE.Vector2(0.27, 1.05),
-    new THREE.Vector2(0.24, 1.22),
-    new THREE.Vector2(0.18, 1.32),
-    new THREE.Vector2(0.14, 1.36),
-  ];
-  const g = new THREE.LatheGeometry(pts, 16);
-  g.computeVertexNormals();
-  return g;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  mesh.userData.redraw = () => { paint(); tex.needsUpdate = true; };
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => mesh.userData.redraw()).catch(() => {});
+  }
+  return mesh;
 }
 
 export function createMonk(opts = {}) {
-  const robeCol = opts.robe ?? 0xa8b0b4;
-  const sashCol = opts.sash ?? 0xd4a84e;
-  const skinCol = opts.skin ?? 0xe0b089;
+  const robe = opts.robe ?? 0x6e7880;
+  const sash = opts.sash ?? 0xd4a84e;
+  const skin = opts.skin ?? 0xe0b089;
   const g = new THREE.Group();
   g.userData.kind = "monk";
   g.userData.id = opts.id || "self";
 
   const blob = new THREE.Mesh(
-    new THREE.CircleGeometry(0.38, 16),
+    new THREE.CircleGeometry(0.42, 12),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false })
   );
   blob.rotation.x = -Math.PI / 2;
   blob.position.y = 0.02;
   g.add(blob);
 
-  const skinM = new THREE.MeshStandardMaterial({ color: skinCol, roughness: 0.52, metalness: 0.02, envMapIntensity: 0.35 });
-  const scalpM = new THREE.MeshStandardMaterial({ color: 0xc49874, roughness: 0.72, metalness: 0, envMapIntensity: 0.25 });
-  const robeM = robeMat(robeCol);
-  const sashM = robeMat(sashCol);
-  sashM.roughness = 0.55;
-  const darkM = new THREE.MeshStandardMaterial({ color: 0x2a2018, roughness: 0.5, metalness: 0 });
-  const whiteM = new THREE.MeshStandardMaterial({ color: 0xf4efe8, roughness: 0.35, metalness: 0 });
-
-  const root = new THREE.Group();
-  g.add(root);
+  const skinM = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.55, metalness: 0.02, envMapIntensity: 0.35 });
+  const robeM = new THREE.MeshStandardMaterial({ color: robe, roughness: 0.92, metalness: 0, envMapIntensity: 0.22 });
+  const sashM = new THREE.MeshStandardMaterial({ color: sash, roughness: 0.6, metalness: 0.05, envMapIntensity: 0.45 });
+  const darkM = new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.5, metalness: 0 });
+  const whiteM = new THREE.MeshStandardMaterial({ color: 0xf4efe8, roughness: 0.4, metalness: 0 });
 
   const hips = new THREE.Group();
-  hips.position.y = 0.52;
-  root.add(hips);
+  hips.position.y = 0.42;
+  g.add(hips);
 
-  function limb(rTop, rBot, h, mat, segs = 10) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, segs), mat);
-    m.castShadow = true;
-    m.receiveShadow = true;
-    return m;
-  }
-
-  const thighL = new THREE.Group(); const thighR = new THREE.Group();
-  thighL.position.set(-0.13, 0, 0);
-  thighR.position.set(0.13, 0, 0);
-  const thL = limb(0.1, 0.09, 0.38, robeM); thL.position.y = -0.19;
-  const thR = thL.clone();
-  thighL.add(thL); thighR.add(thR);
-  const shinL = new THREE.Group(); const shinR = new THREE.Group();
-  shinL.position.y = -0.38; shinR.position.y = -0.38;
-  const shL = limb(0.085, 0.075, 0.36, robeM); shL.position.y = -0.18;
-  const shR = shL.clone();
-  shinL.add(shL); shinR.add(shR);
-  const footL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), skinM);
+  const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.5, 8), robeM);
+  const legR = legL.clone();
+  legL.position.set(-0.14, -0.18, 0);
+  legR.position.set(0.14, -0.18, 0);
+  const footL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), skinM);
   const footR = footL.clone();
-  footL.scale.set(1, 0.55, 1.35); footR.scale.set(1, 0.55, 1.35);
-  footL.position.set(0, -0.38, 0.04); footR.position.set(0, -0.38, 0.04);
-  shinL.add(footL); shinR.add(footR);
-  thighL.add(shinL); thighR.add(shinR);
-  hips.add(thighL, thighR);
+  footL.position.set(-0.14, -0.44, 0.04);
+  footR.position.set(0.14, -0.44, 0.04);
+  hips.add(legL, legR, footL, footR);
 
-  const spine = new THREE.Group();
-  spine.position.y = 0.52;
-  root.add(spine);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.7, 10), robeM);
+  body.position.y = 0.85;
+  body.castShadow = true;
+  g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), robeM);
+  belly.position.y = 0.62;
+  belly.scale.set(1, 0.7, 0.9);
+  g.add(belly);
 
-  const robe = new THREE.Mesh(latheRobe(), robeM);
-  robe.position.y = -0.5;
-  robe.castShadow = true;
-  robe.receiveShadow = true;
-  spine.add(robe);
+  const kasaya = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.55, 0.06), sashM);
+  kasaya.position.set(0, 0.95, -0.3);
+  kasaya.rotation.x = 0.08;
+  g.add(kasaya);
+  const strap = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.04), sashM);
+  strap.position.set(-0.18, 0.95, 0.05);
+  strap.rotation.z = 0.35;
+  g.add(strap);
 
-  const kasaya = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.7, 0.08), sashM);
-  kasaya.position.set(0.08, 0.78, -0.16);
-  kasaya.scale.set(0.9, 0.85, 0.7);
-  kasaya.rotation.x = 0.12;
-  kasaya.castShadow = true;
-  spine.add(kasaya);
-  const strap = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.85, 0.045), sashM);
-  strap.position.set(-0.16, 0.72, 0.04);
-  strap.rotation.z = 0.38;
-  spine.add(strap);
-
-  const armL = new THREE.Group(); const armR = new THREE.Group();
-  armL.position.set(-0.28, 1.08, 0.04);
-  armR.position.set(0.28, 1.08, 0.04);
-  const uL = limb(0.075, 0.07, 0.32, robeM); uL.position.y = -0.16;
+  const armL = new THREE.Group();
+  const armR = new THREE.Group();
+  armL.position.set(-0.34, 1.05, 0);
+  armR.position.set(0.34, 1.05, 0);
+  const uL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.48, 8), robeM);
   const uR = uL.clone();
-  armL.add(uL); armR.add(uR);
-  const foreL = new THREE.Group(); const foreR = new THREE.Group();
-  foreL.position.y = -0.32; foreR.position.y = -0.32;
-  const fL = limb(0.065, 0.055, 0.28, robeM); fL.position.y = -0.14;
-  const fR = fL.clone();
-  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), skinM);
-  const handR = handL.clone();
-  handL.position.y = -0.30; handR.position.y = -0.30;
-  handL.castShadow = true; handR.castShadow = true;
-  foreL.add(fL, handL); foreR.add(fR, handR);
-  armL.add(foreL); armR.add(foreR);
-  spine.add(armL, armR);
-
-  const neck = new THREE.Group();
-  neck.position.y = 1.34;
-  spine.add(neck);
-  const neckM = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.12, 10), skinM);
-  neckM.position.y = 0.02;
-  neck.add(neckM);
+  uL.position.y = -0.22; uR.position.y = -0.22;
+  const hL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), skinM);
+  const hR = hL.clone();
+  hL.position.y = -0.46; hR.position.y = -0.46;
+  armL.add(uL, hL); armR.add(uR, hR);
+  g.add(armL, armR);
 
   const head = new THREE.Group();
-  head.position.y = 0.18;
-  neck.add(head);
-
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.175, 18, 14), skinM);
-  skull.scale.set(0.96, 1.05, 0.95);
+  head.position.y = 1.42;
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 12), skinM);
+  skull.scale.set(1.05, 1, 1);
   skull.castShadow = true;
-  const scalp = new THREE.Mesh(new THREE.SphereGeometry(0.177, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.48), scalpM);
-  scalp.scale.set(0.97, 1.02, 0.96);
-  scalp.position.y = 0.01;
-  const earL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), skinM);
+  const earL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), skinM);
   const earR = earL.clone();
-  earL.position.set(-0.15, -0.02, 0);
-  earR.position.set(0.15, -0.02, 0);
-  earL.scale.set(0.7, 1.1, 0.8); earR.scale.set(0.7, 1.1, 0.8);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), skinM);
-  nose.position.set(0, -0.03, 0.14);
-  nose.scale.set(0.8, 0.9, 1.1);
-
-  const eyeWhiteL = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 6), whiteM);
+  earL.position.set(-0.3, -0.02, 0);
+  earR.position.set(0.3, -0.02, 0);
+  const eyeWhiteL = new THREE.Mesh(new THREE.SphereGeometry(0.048, 8, 6), whiteM);
   const eyeWhiteR = eyeWhiteL.clone();
-  eyeWhiteL.position.set(-0.055, 0.01, 0.13);
-  eyeWhiteR.position.set(0.055, 0.01, 0.13);
-  eyeWhiteL.scale.set(1, 0.7, 0.5); eyeWhiteR.scale.set(1, 0.7, 0.5);
-  const irisL = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), darkM);
-  const irisR = irisL.clone();
-  irisL.position.set(-0.055, 0.01, 0.145);
-  irisR.position.set(0.055, 0.01, 0.145);
-  irisL.scale.set(1, 0.85, 0.5); irisR.scale.set(1, 0.85, 0.5);
+  eyeWhiteL.position.set(-0.1, 0.0, 0.26);
+  eyeWhiteR.position.set(0.1, 0.0, 0.26);
+  eyeWhiteL.scale.set(1, 0.75, 0.5);
+  eyeWhiteR.scale.set(1, 0.75, 0.5);
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), darkM);
+  const eyeR = eyeL.clone();
+  eyeL.position.set(-0.1, 0.0, 0.29);
+  eyeR.position.set(0.1, 0.0, 0.29);
+  eyeL.scale.set(1, 0.7, 0.5);
+  eyeR.scale.set(1, 0.7, 0.5);
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 6, 8, Math.PI), darkM);
+  smile.position.set(0, -0.1, 0.29);
+  smile.rotation.set(Math.PI, 0, 0);
+  smile.scale.set(1, 0.6, 1);
+  const browL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.014, 0.02), darkM);
+  const browR = browL.clone();
+  browL.position.set(-0.1, 0.055, 0.28);
+  browR.position.set(0.1, 0.055, 0.28);
+  browL.rotation.z = 0.12;
+  browR.rotation.z = -0.12;
+  head.add(skull, earL, earR, eyeWhiteL, eyeWhiteR, eyeL, eyeR, smile, browL, browR);
+  g.add(head);
 
-  const brow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.015, 0.02), skinM);
-  brow.position.set(0, 0.05, 0.13);
-  const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 6, 8, Math.PI), darkM);
-  mouth.position.set(0, -0.08, 0.135);
-  mouth.rotation.set(Math.PI, 0, 0);
-  mouth.scale.set(1, 0.5, 1);
-
-  head.add(skull, scalp, earL, earR, nose, eyeWhiteL, eyeWhiteR, irisL, irisR, brow, mouth);
+  // front 袈裟: a single sash from the left shoulder across the chest
+  const drape = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.72, 0.035), sashM);
+  drape.position.set(0.04, 0.95, 0.30);
+  drape.rotation.z = -0.52;
+  g.add(drape);
 
   const label = makeLabel(opts.name || "小沙弥", opts.demo ? "#c8c0b0" : "#f0e0a8");
   g.add(label);
-
-  const bones = { root, hips, spine, thighL, thighR, shinL, shinR, armL, armR, foreL, foreR, neck, head };
 
   const state = {
     action: "idle",
@@ -243,24 +195,8 @@ export function createMonk(opts = {}) {
     bowT: 0,
     heshiT: 0,
     woodT: 0,
+    yOff: 0,
   };
-
-  function resetPose() {
-    root.position.y = 0;
-    root.rotation.set(0, 0, 0);
-    hips.rotation.set(0, 0, 0);
-    spine.rotation.set(0, 0, 0);
-    neck.rotation.set(0, 0, 0);
-    head.rotation.set(0, 0, 0);
-    thighL.rotation.set(0, 0, 0.04);
-    thighR.rotation.set(0, 0, -0.04);
-    shinL.rotation.set(0, 0, 0);
-    shinR.rotation.set(0, 0, 0);
-    armL.rotation.set(0.35, 0.05, 0.12);
-    armR.rotation.set(0.35, -0.05, -0.12);
-    foreL.rotation.set(0.15, 0, 0);
-    foreR.rotation.set(0.15, 0, 0);
-  }
 
   function setRobe(r, s) {
     robeM.color.setHex(r);
@@ -277,7 +213,6 @@ export function createMonk(opts = {}) {
     } else if (a === "stand") {
       state.sitting = false;
       state.action = "idle";
-      resetPose();
     } else {
       state.action = a;
       if (a === "bow") state.bowT = 0;
@@ -285,118 +220,64 @@ export function createMonk(opts = {}) {
       if (a === "woodfish") state.woodT = 0;
     }
   }
-
-  function poseSit() {
-    root.position.y = -0.32;
-    thighL.rotation.set(1.35, 0, 0.15);
-    thighR.rotation.set(1.35, 0, -0.15);
-    shinL.rotation.x = -2.35;
-    shinR.rotation.x = -2.35;
-    spine.rotation.x = 0.12;
-    armL.rotation.set(-0.85, 0.2, 0.85);
-    armR.rotation.set(-0.85, -0.2, -0.85);
-    foreL.rotation.x = 0.4;
-    foreR.rotation.x = 0.4;
-    head.rotation.x = 0.08;
-  }
-
-  function poseBow(k) {
-    // k 0..1: 0 stand, 0.35 kneel, 0.7 full prostration, 1 rise
-    const kneel = Math.min(1, k / 0.3);
-    const down = k < 0.3 ? 0 : (k < 0.7 ? (k - 0.3) / 0.4 : Math.max(0, 1 - (k - 0.7) / 0.3));
-    const kn = k < 0.7 ? kneel : Math.max(0, 1 - (k - 0.7) / 0.3);
-    root.position.y = -0.42 * kn - 0.38 * down;
-    root.rotation.x = 0.35 * down;
-    thighL.rotation.set(1.5 * kn, 0, 0.1);
-    thighR.rotation.set(1.5 * kn, 0, -0.1);
-    shinL.rotation.x = -2.45 * kn;
-    shinR.rotation.x = -2.45 * kn;
-    spine.rotation.x = 0.2 * kn + 1.15 * down;
-    neck.rotation.x = 0.25 * down;
-    head.rotation.x = 0.2 + 0.35 * down;
-    armL.rotation.set(-0.2 - 1.5 * down, 0.1, 0.15 + 0.35 * down);
-    armR.rotation.set(-0.2 - 1.5 * down, -0.1, -0.15 - 0.35 * down);
-    foreL.rotation.x = 0.15 + 0.7 * down;
-    foreR.rotation.x = 0.15 + 0.7 * down;
-  }
-
   function update(dt, moving) {
-    state.phase += dt * (moving ? 9.2 : 1.5);
-    const ph = state.phase;
-
-    if (state.sitting && state.action !== "bow") {
-      poseSit();
-      const br = Math.sin(ph) * 0.01;
-      spine.position.y = 0.52 + br;
-      if (state.action === "heshi" || (state.heshiT > 0 && state.heshiT < 1)) {
-        state.heshiT += dt;
-        const k = Math.min(1, state.heshiT / 0.2);
-        armL.rotation.set(-1.15, 0.15, 0.95 * k);
-        armR.rotation.set(-1.15, -0.15, -0.95 * k);
-        if (state.heshiT > 1 && state.action === "heshi") state.action = "sit";
-      }
+    state.phase += dt * (moving ? 9 : 1.6);
+    const br = Math.sin(state.phase) * (moving ? 0.03 : 0.012);
+    body.scale.y = 1 + (moving ? 0 : br);
+    if (state.sitting) {
+      hips.visible = false;
+      state.yOff = -0.15;
+      armL.rotation.set(0.6, 0.2, 0.5);
+      armR.rotation.set(0.6, -0.2, -0.5);
+      head.rotation.x = 0.08;
+      g.rotation.x = 0;
       return;
     }
-
-    spine.position.y = 0.52;
-
-    if (state.action === "heshi" || (state.heshiT > 0 && state.heshiT < 0.9)) {
-      resetPose();
+    hips.visible = true;
+    state.yOff = moving ? Math.abs(Math.sin(state.phase)) * 0.06 : 0;
+    if (state.action === "heshi" || (state.heshiT > 0 && state.heshiT < 0.8)) {
       state.heshiT += dt;
-      const k = Math.min(1, state.heshiT / 0.18);
-      const hold = state.heshiT < 0.7 ? k : Math.max(0, 1 - (state.heshiT - 0.7) / 0.2);
-      armL.rotation.set(-1.2, 0.12, 0.95 * hold);
-      armR.rotation.set(-1.2, -0.12, -0.95 * hold);
-      foreL.rotation.x = 0.15;
-      foreR.rotation.x = 0.15;
-      head.rotation.x = 0.12 * hold;
-      if (state.heshiT > 0.9 && state.action === "heshi") state.action = "idle";
-      return;
-    }
-
-    if (state.action === "bow" || (state.bowT > 0 && state.bowT < 1.15)) {
+      const k = Math.min(1, state.heshiT / 0.2);
+      armL.rotation.set(0.3, 0.15, 1.15 * k);
+      armR.rotation.set(0.3, -0.15, -1.15 * k);
+      armL.rotation.x = -0.9;
+      armR.rotation.x = -0.9;
+      if (state.heshiT > 0.8 && state.action === "heshi") state.action = "idle";
+    } else if (state.action === "bow" || (state.bowT > 0 && state.bowT < 0.7)) {
       state.bowT += dt;
-      const t = Math.min(1, state.bowT / 1.15);
-      poseBow(t);
-      if (state.bowT >= 1.15 && state.action === "bow") {
+      const t = state.bowT;
+      const k = t < 0.32 ? t / 0.32 : Math.max(0, 1 - (t - 0.32) / 0.38);
+      g.rotation.x = k * 0.7;
+      armL.rotation.set(-0.9, 0.1, 1.0);
+      armR.rotation.set(-0.9, -0.1, -1.0);
+      head.rotation.x = 0.15;
+      if (t >= 0.7 && state.action === "bow") {
         state.action = "idle";
-        resetPose();
+        g.rotation.x = 0;
       }
-      return;
-    }
-
-    if (state.action === "woodfish") {
-      resetPose();
+    } else if (state.action === "woodfish") {
       state.woodT += dt;
-      armR.rotation.set(-1.05, 0, -0.15 + Math.sin(state.woodT * 14) * 0.55);
-      foreR.rotation.x = 0.4;
-      armL.rotation.set(0.3, 0.15, 0.35);
-      if (state.woodT > 0.65) { state.action = "idle"; resetPose(); }
-      return;
-    }
-
-    resetPose();
-    if (moving) {
-      const sw = Math.sin(ph);
-      const sw2 = Math.sin(ph + Math.PI);
-      thighL.rotation.x = sw * 0.7;
-      thighR.rotation.x = sw2 * 0.7;
-      shinL.rotation.x = Math.max(0, -sw) * 0.45;
-      shinR.rotation.x = Math.max(0, -sw2) * 0.45;
-      armL.rotation.set(sw2 * 0.45, 0.05, 0.22);
-      armR.rotation.set(sw * 0.45, -0.05, -0.22);
-      spine.rotation.y = sw * 0.05;
-      root.position.y = Math.abs(Math.sin(ph)) * 0.04;
-      head.rotation.x = -0.05;
+      armR.rotation.set(-1.0, 0, -0.2 + Math.sin(state.woodT * 14) * 0.5);
+      armL.rotation.set(0.3, 0.2, 0.4);
+      if (state.woodT > 0.6) state.action = "idle";
+    } else if (moving) {
+      const sw = Math.sin(state.phase);
+      legL.rotation.x = sw * 0.7;
+      legR.rotation.x = -sw * 0.7;
+      armL.rotation.set(sw * 0.5, 0, 0.25);
+      armR.rotation.set(-sw * 0.5, 0, -0.25);
+      head.rotation.x = 0;
+      g.rotation.x = 0;
     } else {
-      const id = Math.sin(ph);
-      armL.rotation.set(0.35, 0.04, 0.12 + id * 0.03);
-      armR.rotation.set(0.35, -0.04, -0.12 - id * 0.03);
-      spine.rotation.x = id * 0.012;
-      head.rotation.y = Math.sin(ph * 0.5) * 0.06;
+      const id = Math.sin(state.phase);
+      legL.rotation.x = 0;
+      legR.rotation.x = 0;
+      armL.rotation.set(0.15, 0.05, 0.3 + id * 0.03);
+      armR.rotation.set(0.15, -0.05, -0.3 - id * 0.03);
+      head.rotation.x = 0;
+      g.rotation.x = 0;
     }
   }
 
-  resetPose();
-  return { group: g, state, setRobe, setName, setAction, setLabelVisible, update, bones, mats: { robeM, sashM } };
+  return { group: g, state, setRobe, setName, setLabelVisible, setAction, update, mats: { robeM, sashM } };
 }

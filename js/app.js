@@ -134,7 +134,7 @@ const ROOMS = ["禅堂一","禅堂二","禅堂三","禅堂四","禅堂五","禅�
 const ADJ = ["悠闲的","清凉的","慢行的","初雪的","薄暮的","闲来的","微光的","静好的","浅溪的","松间的","云边的","雨后的","向晚的","无事的"];
 const NOUN = ["波纹","铃音","台阶","茶烟","竹影","晚钟","松针","云朵","石阶","灯花","溪声","月色","庭石","蒲团"];
 const ROBES = [
-  { id: "slate", name: "青灰", robe: 0xa8b0b4, sash: 0xd4a84e, sub: "默认僧衣" },
+  { id: "slate", name: "青灰", robe: 0x6e7880, sash: 0xd4a84e, sub: "默认僧衣" },
   { id: "saffron", name: "赭黄", robe: 0xc47a3a, sash: 0xe8d5a3, sub: "山居暖色" },
   { id: "cinnabar", name: "朱砂", robe: 0x8c3a2a, sash: 0xd4b56a, sub: "殿前庄严" },
   { id: "ink", name: "墨蓝", robe: 0x3a4a62, sash: 0xc9a962, sub: "暮色沉静" },

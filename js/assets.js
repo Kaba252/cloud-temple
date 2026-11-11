@@ -338,6 +338,14 @@ export function buildMaterials(tex, q) {
     metalness: 0,
   });
 
+  const pillarMat = lacquer([1, 2.4], 0xff6a4c);
+  pillarMat.roughness = 0.5;
+  pillarMat.clearcoat = 0.22;
+  pillarMat.clearcoatRoughness = 0.4;
+  pillarMat.envMapIntensity = 0.55;
+  if (pillarMat.emissive) pillarMat.emissive.setHex(0x3a0808);
+  pillarMat.emissiveIntensity = 0.12;
+
   return {
     stone: stone([1, 1], 0xcfc8be),
     stoneFine: stone([2.2, 2.2], 0xc8c2b8),
@@ -346,8 +354,8 @@ export function buildMaterials(tex, q) {
     wood: wood([1, 1]),
     woodDark: wood([1.4, 1.4], 0x8a6a50),
     plank: wood([2, 2], 0xffffff),
-    pillar: lacquer([1, 2.4], 0xe22c24),
-    lacquer: lacquer([1.2, 1.2], 0xd4241c),
+    pillar: pillarMat,
+    lacquer: lacquer([1.2, 1.2], 0xff4a38),
     roof: roof([2.4, 2.4], 0xffd2aa),
     roofFine: roof([1.4, 1.4], 0xffc898),
     bark: bark([1, 2]),

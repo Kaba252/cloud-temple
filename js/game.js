@@ -4,7 +4,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { createMonk } from "./monk.js";
-import { buildWorld, placeBuddha, gildBuddha } from "./world.js";
+import { buildWorld } from "./world.js";
 import { detectQuality, qualityOpts, loadAssets, buildMaterials, localPeriod, periodLooks, isMobile } from "./assets.js";
 
 export { detectQuality };
@@ -63,9 +63,18 @@ export async function createGame(canvas, hooks = {}) {
   const fill = new THREE.DirectionalLight(0x88a0c0, 0.25);
   fill.position.set(-16, 10, -8);
   scene.add(fill);
-  const hallFill = new THREE.PointLight(0xffcc88, q.fluent ? 0 : 1.4, 16, 2);
-  hallFill.position.set(0, 4.2, -26);
+  const hallFill = new THREE.PointLight(0xffcc88, q.fluent ? 1.6 : 2.3, 20, 1.6);
+  hallFill.position.set(0, 5.0, -26);
   scene.add(hallFill);
+  const altarLight = new THREE.PointLight(0xffd090, q.fluent ? 1.1 : 1.9, 12, 1.8);
+  altarLight.position.set(0, 4.2, -31.2);
+  scene.add(altarLight);
+  const hallSideL = new THREE.PointLight(0xffc090, q.fluent ? 0.5 : 0.85, 10, 2);
+  hallSideL.position.set(-5.5, 4.0, -26);
+  scene.add(hallSideL);
+  const hallSideR = hallSideL.clone();
+  hallSideR.position.x = 5.5;
+  scene.add(hallSideR);
 
   function applyPeriod(period) {
     const L = periodLooks(period);
@@ -112,13 +121,7 @@ export async function createGame(canvas, hooks = {}) {
   setupBloom();
 
   hooks.onProgress?.(0.82, "迎佛入殿…");
-  try {
-    const model = await assets.loadBuddha();
-    gildBuddha(model, mats.gold);
-    placeBuddha(model, world.decorations.buddhaAnchor);
-  } catch (e) {
-    console.warn("Buddha model failed, pedestal only", e);
-  }
+  // Procedural 横三世佛 are built in world.js — skip the shallow relief scan.
 
   // player
   const player = createMonk({ id: "self", name: "小沙弥" });
@@ -192,17 +195,19 @@ export async function createGame(canvas, hooks = {}) {
 
   function blocked(x, z) {
     if (Math.abs(x) > 52 || Math.abs(z) > 52) return true;
-    const a = world.hallAABB;
-    if (a && x > a.minX && x < a.maxX && z > a.minZ && z < a.maxZ) {
-      const inside = z < -22.2 && z > -33 && Math.abs(x) < 7.5;
-      const door = Math.abs(x) < 2.4 && z > -23 && z < -20;
-      if (!inside && !door && z < -21) return true;
+    if (world.wallBoxes) {
+      for (const b of world.wallBoxes) {
+        if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return true;
+      }
     }
     for (const c of world.colliders) {
       const dx = x - c.x, dz = z - c.z;
       if (dx * dx + dz * dz < (c.r + 0.4) * (c.r + 0.4)) return true;
     }
     return false;
+  }
+  function groundY(x, z, extra = 0) {
+    return (world.groundHeight ? world.groundHeight(x, z) : 0) + extra;
   }
   function tryMove(nx, nz) {
     if (!blocked(nx, nz)) { player.group.position.x = nx; player.group.position.z = nz; return true; }
@@ -403,6 +408,7 @@ export async function createGame(canvas, hooks = {}) {
     }
 
     player.update(dt, moving);
+    player.group.position.y = groundY(player.group.position.x, player.group.position.z, sitting ? 0 : (player.state.yOff || 0));
     updateSmoke(dt);
     updateCircumambulate();
     if (world.decorations.bellMesh) world.decorations.bellMesh.rotation.z *= 0.92;
@@ -425,6 +431,8 @@ export async function createGame(canvas, hooks = {}) {
       } else {
         o.monk.update(dt, false);
       }
+      const og = o.monk.group;
+      og.position.y = groundY(og.position.x, og.position.z, o.monk.state.sitting ? 0 : (o.monk.state.yOff || 0));
     });
 
     if (cam.follow) {
@@ -549,7 +557,8 @@ export async function createGame(canvas, hooks = {}) {
       renderer.shadowMap.enabled = q.shadows;
       sun.castShadow = q.shadows;
       renderer.setPixelRatio(q.pixelRatio);
-      hallFill.intensity = q.fluent ? 0 : 1.4;
+      hallFill.intensity = q.fluent ? 1.6 : 2.3;
+      altarLight.intensity = q.fluent ? 1.1 : 1.9;
       setupBloom();
       onResize();
     },
