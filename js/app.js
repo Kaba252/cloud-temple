@@ -1,5 +1,5 @@
 /* 云端禅院 v2 */
-import { createGame } from "./game.js";
+import { createGame, detectQuality } from "./game.js";
 
 const STORAGE_KEY = "cloud-temple-v2";
 const APP_ID = "yunchan-cloud-temple-v2";
@@ -672,7 +672,12 @@ function renderSettingsSheet(root) {
       <button type="button" class="row" id="btnRename"><span>重新受戒（换法号）</span><span class="hint">形貌会随之改变</span></button>
     </div>
     <p class="lead" style="margin-top:12px">快捷键：1 / E / 空格 礼拜 · 2 念珠 · 3 合掌 · 5 木鱼<br>每日 6:00 早课、18:00 晚课会鸣钟（需先打开声音，并以本机时间为准）。</p>
-    <p class="lead">仅供文化娱乐与冥想放松，不涉及真实宗教活动，亦不以宗教名义收取任何费用。<br><a href="v1/" style="color:#d4b878">查看第一版二维原型</a></p>`;
+    <div class="settings-list">
+      <button type="button" class="row" id="btnQuality"><span>流畅模式（弱设备降低阴影与辉光）</span><span class="hint">${(game && game.getQuality && game.getQuality()) === "fluent" ? "已开" : "已关"}</span></button>
+    </div>
+    <p class="lead" style="margin-top:12px">仅供文化娱乐与冥想放松，不涉及真实宗教活动，亦不以宗教名义收取任何费用。<br>
+      <a href="v2/" style="color:#d4b878">第二版</a> · <a href="v1/" style="color:#d4b878">第一版二维原型</a></p>
+    <p class="lead" style="margin-top:10px">致谢：场景贴图与暮色 HDRI 来自 <a href="https://polyhaven.com" style="color:#d4b878" target="_blank" rel="noopener">Poly Haven</a>（CC0）；金身佛像为史密森尼「宇宙佛」三维扫描（公有领域）。详见 <a href="CREDITS.md" style="color:#d4b878">CREDITS.md</a>。</p>`;
   $("#robeGrid").onclick = (e) => {
     const btn = e.target.closest(".opt"); if (!btn) return;
     state.robe = btn.dataset.id; save();
@@ -693,6 +698,13 @@ function renderSettingsSheet(root) {
     const seed = (Math.random() * 0xffffffff) >>> 0;
     state.monk = { seed, name: poeticName(seed) }; save();
     game?.setName(state.monk.name); net.sendHello(); toast("今日法号 · " + state.monk.name); closeSheet();
+  };
+  $("#btnQuality").onclick = () => {
+    const cur = game?.getQuality?.() || detectQuality();
+    const next = cur === "fluent" ? "quality" : "fluent";
+    game?.setQuality(next);
+    toast(next === "fluent" ? "已开启流畅模式" : "已切回精细画质");
+    renderSettingsSheet(root);
   };
 }
 
@@ -1235,7 +1247,7 @@ async function boot() {
 
   setProg(0.08, "展开画卷…");
   const rb = robeOf();
-  game = createGame($("#view"), {
+  game = await createGame($("#view"), {
     onProgress: setProg,
     onArea(name) { $("#areaTag").textContent = name; },
     onPrompt(it) {

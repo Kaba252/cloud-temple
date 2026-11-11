@@ -1,6 +1,7 @@
-.DS_Store
 *.log
-screenshot.png
+.DS_Store
 screenshot-*.png
-v2-screenshot.png
+screenshot.png
 v2-desktop.png
+v2-screenshot.png
+v3-*.png
